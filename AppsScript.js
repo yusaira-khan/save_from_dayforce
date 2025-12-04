@@ -1,7 +1,13 @@
 function main() {
+
   const sheets = SpreadsheetApp.getActiveSpreadsheet().getSheets();
-  for (let s of sheets.slice(0)){
-    remove_duplicates_(s)
+  const start_slice = 0
+  let idx = 0
+  for (let s of sheets.slice(start_slice)){
+    console.log(`[${idx+start_slice}] reformatting ${s.getName()}`)
+
+    reformat_table_(s)
+    idx++;
   }
 }
 
@@ -134,4 +140,61 @@ function get_values_(range){
   const r=range.getValues()
   const r2 = r.map((c)=>c.filter(Boolean))
   return r2
+}
+
+function reformat_table_slow_(s){
+  const range = s.getDataRange()
+  const num_rows = range.getNumRows()
+  const num_cols = range.getNumRows()
+
+  for (let r=0; r<num_rows; r++){
+    const row = range.offset(r, 0, 1);
+    handle_aggregate_(row);
+    for (let c=0; c<num_cols; c++){
+      const cell = range.offset(r, c, 1,1)
+      handle_number_format_(cell)
+    }
+    handle_bad_row_(row)
+  }
+}
+
+const COLOR_LIGHT_CYAN_2 = "#a2c4c9"
+const COLOR_GRAY = "#cccccc"
+
+const AGGREGATE_COLOR = COLOR_LIGHT_CYAN_2
+const AGGREGATE_NAMES = new Set(["Earnings", "Taxable Benefits","Taxes","Net Pay","Pre-Tax Deductions","Post-Tax Deductions","Reimbursements"])
+
+function handle_aggregate_(range){
+  if (AGGREGATE_NAMES.has(range.getValue())){
+    range.setBackground(AGGREGATE_COLOR)
+  }
+}
+
+const DOLLAR_FORMAT = '"$"#,##0.00;"$"\(#,##0.00\);$0.00;@'
+const DECIMAL_4_REGEX = /^\d+\.\d{4}$/
+const DECIMAL_4_FORMAT = "0.0000"
+const DECIMAL_2_REGEX = /^\d+\.\d{2}$/
+const DECIMAL_2_FORMAT = "0.00"
+
+function handle_number_format_(cell){
+  const value = cell.getValue()
+  if (cell.isBlank() || typeof(value) === "number"){
+    return;
+  } else if (value.indexOf("$")!=-1){
+    cell.setNumberFormat(DOLLAR_FORMAT)
+  } else if (DECIMAL_4_REGEX.test(value)){
+    cell.setNumberFormat(DECIMAL_4_FORMAT)
+  } else if (DECIMAL_2_REGEX.test(value)){
+    cell.setNumberFormat(DECIMAL_2_FORMAT)
+  }
+}
+
+
+function handle_bad_row_(row){
+  const values = row.getValues()[0]
+  if (values.length>=5){
+    if (values[0]=='' && values[1]=='' && values[3]=='Amount' && values[4]=='' && values[5]=='Amount' ){
+      row.getSheet().deleteRow(row.getRow())
+    }
+  }
 }
