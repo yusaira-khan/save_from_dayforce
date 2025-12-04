@@ -13,7 +13,7 @@ function remove_unwanted_(s, m=null){
   for (let offset=0; offset<num_rows; offset++){
     const row = range.offset(offset, 0, 1);
     if (is_unwanted_(row)){
-      rows_to_remove.unshift(row.getRow())
+      rows_to_remove.push(row.getRow())
     }
   }
 
@@ -41,7 +41,7 @@ function is_unwanted_(row){
 }
 
 function remove_rows_in_batches_(sheet, rows){
-  const batches = gather_rows_(rows)
+  const batches = gather_rows_(sanitize_rows_(rows))
   for (const row_batch of batches){
     sheet.deleteRows(row_batch.start, row_batch.howMany)
   }
@@ -66,9 +66,15 @@ function gather_rows_(rows){
 
 
 function remove_rows_1by1_(sheet, rows){
-  for (const row_num of rows){
+  
+  for (const row_num of sanitize_rows_(rows)){
     sheet.deleteRow(row_num)
   }
+}
+function sanitize_rows_(rows){
+  const unique = [...new Set(rows)]
+  unique.sort().reverse() // descending order
+  return unique
 }
 
 function remove_duplicates_(s){
@@ -80,7 +86,7 @@ function remove_duplicates_(s){
     const rowNum = range.offset(offset, 0, 1).getRow();
 
     if (is_duplicate_in_(range_values, offset)){
-      rows_to_remove.unshift(rowNum)
+      rows_to_remove.push(rowNum)
     }
   }
   remove_rows_in_batches_(s, rows_to_remove)
