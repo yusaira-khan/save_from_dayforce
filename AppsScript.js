@@ -427,3 +427,36 @@ function clearFormula_(src){
     }
    }
 }
+
+const COLUMN_REFERENCE = {5: 2, 6: 4}
+function setFormula_(src){
+  const lastRow = findRowWithName_("Net Pay", src)
+  const start = 3
+  const end = lastRow.getRow()+1
+
+   for (let rowNum=start; rowNum<end; rowNum++){
+    const header = src.getRange(rowNum, 1)
+    if (AGGREGATE_NAMES.has(header.getValue())){
+      continue
+    }
+
+    for (const c of COLUMNS_TO_COPY){
+      const sumCell = src.getRange(rowNum, c)
+      const prevCell = src.getRange(rowNum, c+COLUMN_SPACE)
+      const refCell = src.getRange(rowNum, COLUMN_REFERENCE[c])
+      if (sumCell.getFormula()!==""){
+        continue
+      }else if(refCell.isBlank() && prevCell.getFormula()===""){
+        continue;
+      }else if (prevCell.getFormula()===""){
+        sumCell.setFormula("="+refCell.getA1Notation())
+      }else if(refCell.isBlank()){
+        sumCell.setFormula(prevCell.getFormula())
+        prevCell.clear()
+      } else {
+        sumCell.setFormula(prevCell.getFormula()+"+"+refCell.getA1Notation())
+        prevCell.clear()
+      }
+    }
+   }
+}
