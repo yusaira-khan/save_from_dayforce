@@ -208,8 +208,6 @@ function reformat_table_(s){
 
     handle_aggregate_(row);
   }
-
-  // format_main_header_(table_range.offset(0, 0, 1))
 }
 
 const DOLLAR_FORMAT = '"$"#,##0.00;"$"\(#,##0.00\);$0.00'
@@ -229,15 +227,6 @@ function adjust_column_formats_(table_range){
   table_range.offset(0, 5, num_rows,1).setNumberFormat(DOLLAR_FORMAT)
 }
 
-function format_main_header_(row){
-  if (!row.getCell(1,2).isPartOfMerge()){
-    if (!row.getCell(1,3).isBlank()){
-      row.getCell(1,5).setValue(row.getCell(1,3).getValue())
-    }
-    row.offset(0,1,1,3).merge()
-    row.offset(0,3,1,2).merge()
-  }
-}
 
 function get_proper_table_(data_range){
   const num_columns = data_range.getNumColumns()
@@ -282,3 +271,14 @@ function find_last_header_(range){
   throw new Error("Unhandled!")
 }
 
+function format_main_header_(s){
+  if (!s.getRange(1,2).isPartOfMerge()){
+    if (!s.getRange(1,3).isBlank()){
+      s.getRange(1,5).setValue(s.getRange(1,3).getValue())
+    }
+    s.getRange(1,2,1,3).merge()
+    SpreadsheetApp.flush()
+    s.getRange(1,5,1,2).merge()
+    SpreadsheetApp.flush()
+  }
+}
