@@ -409,3 +409,21 @@ function findRowWithName_(name, targetSheet){
   }
   throw new Error(`Could not find row with name ${name} in ${targetSheet.getName()}`)
 }
+
+function clearFormula_(src){
+  const lastRow = findRowWithName_("Net Pay", src)
+  const start = 3
+  const end = lastRow.getRow()
+
+   for (let rowNum=start; rowNum<end; rowNum++){
+    const header = src.getRange(rowNum, 1)
+    if (AGGREGATE_NAMES.has(header.getValue())){
+      for (const c of COLUMNS_TO_USE){
+        const cell = src.getRange(header.getRow(),c+COLUMN_SPACE)
+        if (cell.getFormula()!==""){
+          cell.setFormula("")
+        }
+      }
+    }
+   }
+}
