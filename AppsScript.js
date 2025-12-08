@@ -327,3 +327,85 @@ function getNextAggregate_(row){
   }
   throw new Error(`Unhandled! could not find aggregate from sheet="${row.getSheet().getName()}", row=${row.getRow()}`)
 }
+
+function allFormulaCopy_() {
+  const sheets = SpreadsheetApp.getActiveSpreadsheet().getSheets();
+  const len = sheets.length
+  const startSlice = 45
+  
+  for (let cIdx = startSlice; cIdx<len -1; cIdx++){
+    const nIdx = cIdx+1
+    const current = sheets[cIdx]
+    const next = sheets[nIdx]
+    const cName = current.getName()
+    const nName = next.getName()
+    if(nName.endsWith(".extra")){
+      if (cName+".extra"!==nName){
+        throw new Error(`file order mismatch [${cIdx}]${cName} and [${nIdx}]${nName}`)
+      }
+    }
+
+    if (getYearFromName_(cName) !== getYearFromName_(nName)){
+      console.log(`Skipping! Year does not match between [${cIdx}]${cName} and [${nIdx}]${nName}`)
+      continue;
+    } else{
+      console.log(`Copying from [${cIdx}]${cName} to [${nIdx}]${nName}`)
+      copyFormula_(current, next)
+    }
+
+  }
+}
+
+
+function getYearFromName_(name){
+  return name.split("-")[0]
+}
+
+
+const COLUMNS_TO_COPY = [5,6]
+const COLUMN_SPACE = 4
+const NUM_COLUMNS = 6
+function copyFormula_(src, dest){
+
+  const srcLastRow = findRowWithName_("Net Pay", src)
+  const srcStart = 3
+  const srcEnd= srcLastRow.getRow()+1
+
+  for (let sRowNum=srcStart; sRowNum<srcEnd; sRowNum++){
+    const srcHeader = src.getRange(sRowNum, 1)
+    if (srcHeader.isBlank()){
+      throw new Error(`sheet ${src.getName()} is blank at row ${sRowNum}`)
+    }
+    const destHeader = findRowWithName_(srcHeader.getValue(), dest)
+    for (const c of COLUMNS_TO_COPY){
+      const srcCell = src.getRange(srcHeader.getRow(), c)
+      const destCell = dest.getRange(destHeader.getRow(),c+COLUMN_SPACE)
+      writeTo_(srcCell, destCell)
+    }
+  }
+
+  return
+}
+
+function address_(cell){
+  return `'${cell.getSheet().getName()}'!${cell.getA1Notation()}`
+}
+function writeTo_(src, dest){
+  if (src.isBlank()){
+    return
+  } else {
+    dest.setFormula("="+address_(src))
+  }
+}
+
+function findRowWithName_(name, targetSheet){
+  const targetRange = targetSheet.getDataRange()
+  const numRows = targetRange.getNumRows()
+  for (let offset=0; offset<numRows; offset++){
+    const row = targetRange.offset(offset, 0, 1, 1)
+    if (row.getValue()==name){
+      return row
+    }
+  }
+  throw new Error(`Could not find row with name ${name} in ${targetSheet.getName()}`)
+}
