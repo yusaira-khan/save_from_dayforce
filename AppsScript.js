@@ -278,3 +278,52 @@ function formatMainHeader_(s){
     SpreadsheetApp.flush()
   }
 }
+
+function isAggregate_(row){
+  return row.getBackground()!=="#ffffff"
+}
+
+function isLastAggregate_(row){
+  return isAggregate_(row) && row.getValue() === "Net Pay"
+}
+
+const COLUMNS_TO_USE=[2,4,5,6]
+function formulaForAggregate_(s){
+  const startRow = s.getRange(3,1,1,6)
+  let currentAgg = startRow
+  while(!isLastAggregate_(currentAgg)){
+    const nextAgg = getNextAggregate_(currentAgg)
+    const sumStart = currentAgg.getRow()+1
+    const sumEnd = nextAgg.getRow()-1
+    for (const c of COLUMNS_TO_USE){
+      setAggregateFormula_(currentAgg, c, sumStart, sumEnd)
+    }
+    currentAgg = nextAgg
+  }
+}
+
+function setAggregateFormula_(row, colNum, startRowNum, endRowNum){
+  const sheet = row.getSheet()
+  const aggCell = sheet.getRange(row.getRow(), colNum)
+  const startCell = sheet.getRange(startRowNum, colNum)
+  const endCell = sheet.getRange(endRowNum, colNum)
+  if (startRowNum == endRowNum){
+    aggCell.setFormula(`=${startCell.getA1Notation()}`)
+  }else{
+    aggCell.setFormula(`=SUM(${startCell.getA1Notation()}:${endCell.getA1Notation()})`)
+
+  }
+    if (aggCell.getValue()=="0.0"){
+      aggCell.setFormula("")
+    }
+}
+
+function getNextAggregate_(row){
+  for (let offset = 1; offset <= 10; offset++){
+    const testRow = row.offset(offset, 0)
+    if(isAggregate_(testRow)){
+      return testRow
+    }
+  }
+  throw new Error(`Unhandled! could not find aggregate from sheet="${row.getSheet().getName()}", row=${row.getRow()}`)
+}
