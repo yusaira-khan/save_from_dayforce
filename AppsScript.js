@@ -162,7 +162,7 @@ const COLOR_LIGHT_CYAN_2 = "#a2c4c9"
 const COLOR_GRAY = "#cccccc"
 
 const AGGREGATE_COLOR = COLOR_LIGHT_CYAN_2
-const AGGREGATE_NAMES = new Set(["Earnings", "Taxable Benefits","Taxes","Net Pay","Pre-Tax Deductions","Post-Tax Deductions","Reimbursements"])
+const AGGREGATE_NAMES = new Set(["Earnings", "Taxable Benefits","Taxes","Net Pay","Pre-Tax Deductions","Post-Tax Deductions","Reimbursements","Memo Information"])
 
 function handle_aggregate_(range){
   if (AGGREGATE_NAMES.has(range.getValue())){
@@ -189,7 +189,6 @@ function handle_number_format_(cell){
   }
 }
 
-
 function handle_bad_row_(row){
   const values = row.getValues()[0]
   if (values.length>=5){
@@ -198,3 +197,88 @@ function handle_bad_row_(row){
     }
   }
 }
+
+function reformat_table_(s){
+  const table_range = get_proper_table_(s.getDataRange())
+  adjust_column_formats_(table_range)
+
+  const num_rows = table_range.getNumRows()
+  for (let r=0; r<num_rows; r++){
+    const row = table_range.offset(r, 0, 1);
+
+    handle_aggregate_(row);
+  }
+
+  // format_main_header_(table_range.offset(0, 0, 1))
+}
+
+const DOLLAR_FORMAT = '"$"#,##0.00;"$"\(#,##0.00\);$0.00'
+const DECIMAL_4_FORMAT = "0.0000"
+const DECIMAL_2_FORMAT = "0.00"
+
+function adjust_column_formats_(table_range){
+  const s= table_range.getSheet()
+  const num_rows = table_range.getNumRows()
+  const num_columns= table_range.getNumColumns();
+  s.setColumnWidth(1,150)
+  s.setColumnWidths(2, num_columns-1, 100)
+  table_range.offset(0, 1,num_rows, 1).setNumberFormat(DECIMAL_2_FORMAT)
+  table_range.offset(0, 2, num_rows,1).setNumberFormat(DECIMAL_4_FORMAT)
+  table_range.offset(0, 3, num_rows,1).setNumberFormat(DOLLAR_FORMAT)
+  table_range.offset(0, 4, num_rows, 1).setNumberFormat(DECIMAL_2_FORMAT)
+  table_range.offset(0, 5, num_rows,1).setNumberFormat(DOLLAR_FORMAT)
+}
+
+function format_main_header_(row){
+  if (!row.getCell(1,2).isPartOfMerge()){
+    if (!row.getCell(1,3).isBlank()){
+      row.getCell(1,5).setValue(row.getCell(1,3).getValue())
+    }
+    row.offset(0,1,1,3).merge()
+    row.offset(0,3,1,2).merge()
+  }
+}
+
+function get_proper_table_(data_range){
+  const num_columns = data_range.getNumColumns()
+  const sheet = data_range.getSheet()
+
+  const main_header_row = find_main_header_(data_range)
+  const last_header_row = find_last_header_(data_range)
+
+  const num_table_rows = 1 + last_header_row.getRow() - main_header_row.getRow()
+  if (main_header_row.getRow() > 1){
+    const table_range_spec = sheet.getRange(main_header_row.getRow(), 1, num_table_rows+3)
+    sheet.moveRows(table_range_spec, 1)
+  }
+  const table_range = sheet.getRange(1,1,num_table_rows, num_columns)
+  return table_range
+}
+
+const MAIN_HEADER_TEXT_OLD = "Detail at the time pay statement issued"
+const MAIN_HEADER_TEXT_REPLACE = "Pay Statement"
+
+function find_main_header_(range){
+  for (let r=0; r<range.getNumRows(); r++){
+    const row = range.offset(r, 0, 1);
+      if (row.getValue()==MAIN_HEADER_TEXT_OLD ){
+        row.getCell(1,1).setValue(MAIN_HEADER_TEXT_REPLACE)
+        return row
+      } else if (row.getValue()==MAIN_HEADER_TEXT_REPLACE){
+        return row
+      }
+  }
+  throw new Error("Unhandled!")
+}
+
+function find_last_header_(range){
+  for (let r=0; r<range.getNumRows(); r++){
+    const row = range.offset(r, 0, 1);
+      if (row.getValue()=="Net Pay"){
+        handle_bad_row_(row.offset(-1,0))
+        return row
+      }
+  }
+  throw new Error("Unhandled!")
+}
+
